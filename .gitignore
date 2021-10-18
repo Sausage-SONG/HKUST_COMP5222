@@ -127,3 +127,13 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Trained Models
+cnn/results
+cnn/lightning_logs
+
+# VScode
+.vscode
+
+# Temp
+.tmp
