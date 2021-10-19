@@ -1,4 +1,5 @@
 # Lightning
+import fasttext
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
@@ -19,8 +20,8 @@ args = parser.parse_args()
 train_files = [Path(__file__).parent.parent / f'data/fold_{i}.csv' for i in range(1,5)]
 test_file = [Path(__file__).parent.parent / 'data/fold_5.csv']
 
-ds = LitTSDataset(train_files, test_file)
-model = LitConv1D(ds.fasttext, 100)
+ds = LitTSDataset(train_files, test_file, fasttext='pretrained', batch_size=128)
+model = LitConv1D(ds.fasttext, 300)
 
 # Additional Trainer Configs
 kwargs = dict()
@@ -30,8 +31,8 @@ if args.no_check:
     kwargs['num_sanity_val_steps'] = 0
 kwargs['default_root_dir'] = Path(__file__).parent
 # Callbacks
-checkpoint_callback = ModelCheckpoint(monitor='val_loss', save_top_k=3, mode='min')
-early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=0.001, patience=50, mode="min")
+checkpoint_callback = ModelCheckpoint(monitor='f1_score', save_top_k=3, mode='min')
+early_stop_callback = EarlyStopping(monitor="f1_score", min_delta=0.001, patience=100, mode="min")
 callbacks = [checkpoint_callback, early_stop_callback]
 
 # Training

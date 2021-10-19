@@ -137,3 +137,7 @@ cnn/lightning_logs
 
 # Temp
 .tmp
+
+# Fasttext
+cc.en.300.bin
+cc.en.300.bin.gz

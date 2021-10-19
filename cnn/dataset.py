@@ -9,7 +9,8 @@ import pytorch_lightning as pl
 import re
 import csv
 import einops
-import fasttext
+import fasttext as ft
+import fasttext.util as ftu
 from pathlib import Path
 
 class ToxicSpanDataset(Dataset):
@@ -32,17 +33,19 @@ class ToxicSpanDataset(Dataset):
                     sentence = line[1].rstrip()
 
                     # Convert the string to python list
-                    arr = arr[1:-1]
-                    if len(arr) == 0:
-                        arr = []
-                    else:
-                        arr = list(map(int, arr.split(',')))
+                    arr = eval(arr)
                     # To one-hot
                     arr = [1 if i in arr else 0 for i in range(len(sentence))]
                     
                     self.all_data.append([arr, sentence])
         
-        self.fasttext = self.train_fasttext() if fasttext is None else fasttext
+        if fasttext is None:
+            self.fasttext = self.train_fasttext()
+        elif isinstance(fasttext, str) and fasttext == 'pretrained':
+            ftu.download_model('en', if_exists='ignore')
+            self.fasttext = ft.load_model('cc.en.300.bin')
+        else:
+            self.fasttext = fasttext
 
     def __len__(self):
 
@@ -76,7 +79,7 @@ class ToxicSpanDataset(Dataset):
             for _, sentence in self.all_data:
                 f.write(str(sentence)+'\n')
 
-        model = fasttext.train_unsupervised(str(corpus_path))
+        model = ft.train_unsupervised(str(corpus_path))
         corpus_path.unlink()
         return model
     
@@ -118,10 +121,10 @@ def SeqPad(batch):
 
 class LitTSDataset(pl.LightningDataModule):
 
-    def __init__(self, train_files, test_files, batch_size=512):
+    def __init__(self, train_files, test_files, batch_size=512, fasttext=None):
         super().__init__()
 
-        self.train_ds = ToxicSpanDataset(train_files)
+        self.train_ds = ToxicSpanDataset(train_files, fasttext=fasttext)
         self.fasttext = self.train_ds.fasttext
         self.val_ds = ToxicSpanDataset(test_files, self.fasttext, 'val')
         self.test_ds = ToxicSpanDataset(test_files, self.fasttext, 'test')

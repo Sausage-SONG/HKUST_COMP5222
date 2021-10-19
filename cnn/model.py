@@ -74,7 +74,7 @@ class Conv1D(nn.Module):
 
 class LitConv1D(pl.LightningModule):
 
-    def __init__(self, fasttext, in_channels, dropout=0.1, lr=1e-3):
+    def __init__(self, fasttext, in_channels, dropout=0.1, lr=1e-4):
         super().__init__()
 
         self.lr = lr
@@ -106,24 +106,30 @@ class LitConv1D(pl.LightningModule):
         self.log("val_loss", loss, on_step=False, on_epoch=True, sync_dist=True)
 
         score = 0
+        outputs = torch.argmax(outputs, dim=2)
+        outputs = outputs.cpu().numpy()
+        arrs = arrs.cpu().numpy()
         for len_arr, output, arr in zip(len_arrs, outputs, arrs):
-            gt_seq = [arr[i] for i in range(len(len_arr)) for _ in range(len_arr[i])]
-            out_seq = [output[i] for i in range(len(len_arr)) for _ in range(len_arr[i])]
+            gt_one_hot = [arr[i] for i in range(len(len_arr)) for _ in range(len_arr[i])]
+            gt_seq = []
+            for i in range(len(gt_one_hot)):
+                if gt_one_hot[i] == 1:
+                    gt_seq.append(i)
+            out_one_hot = [output[i] for i in range(len(len_arr)) for _ in range(len_arr[i])]
+            out_seq = []
+            for i in range(len(out_one_hot)):
+                if out_one_hot[i] == 1:
+                    out_seq.append(i)
             score += f1(out_seq, gt_seq)
         score /= arrs.shape[0]
         self.log("f1_score", score, on_step=False, on_epoch=True, sync_dist=True)
 
     def test_step(self, batch, batch_idx):
         
-        arrs, sentences, len_arrs = batch[0], batch[1], batch[2]
-        outputs = self.model(sentences)
-        outputs = torch.argmax(outputs, dim=2)
-        for len_arr, _ in zip(len_arrs, outputs):
-            pass
-
+        pass
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
-        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=15)
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=20)
         return {'optimizer': optimizer, 'lr_scheduler': scheduler, 'monitor': 'val_loss'}
 
