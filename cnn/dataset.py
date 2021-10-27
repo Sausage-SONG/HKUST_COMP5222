@@ -79,7 +79,7 @@ class ToxicSpanDataset(Dataset):
             for _, sentence in self.all_data:
                 f.write(str(sentence)+'\n')
 
-        model = ft.train_unsupervised(str(corpus_path))
+        model = ft.train_unsupervised(str(corpus_path), dim=100)
         corpus_path.unlink()
         return model
     
@@ -141,7 +141,7 @@ class LitTSDataset(pl.LightningDataModule):
 
     def train_dataloader(self):
 
-        return DataLoader(self.train_ds, batch_size=self.batch_size, shuffle=True, pin_memory=True, collate_fn=SeqPad, num_workers=8)
+        return DataLoader(self.train_ds, batch_size=self.batch_size, shuffle=False, pin_memory=True, collate_fn=SeqPad, num_workers=8)
 
     def val_dataloader(self):
 

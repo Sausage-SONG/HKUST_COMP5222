@@ -5,24 +5,24 @@ import torch.nn.functional as F
 import pytorch_lightning as pl
 # Utils
 import einops
+# F1 Score
+import sys
+from pathlib import Path
+sys.path.append(str(Path(__file__).parent.parent))
+from eval_tsd import f1
 
-def f1(predictions, gold):
-    """
-    F1 (a.k.a. DICE) operating on two lists of offsets (e.g., character).
-    >>> assert f1([0, 1, 4, 5], [0, 1, 6]) == 0.5714285714285714
-    :param predictions: a list of predicted offsets
-    :param gold: a list of offsets serving as the ground truth
-    :return: a score between 0 and 1
-    """
-    if len(gold) == 0:
-        return 1. if len(predictions) == 0 else 0.
-    if len(predictions) == 0:
-        return 0.
-    predictions_set = set(predictions)
-    gold_set = set(gold)
-    nom = 2 * len(predictions_set.intersection(gold_set))
-    denom = len(predictions_set) + len(gold_set)
-    return float(nom)/float(denom)
+def weight_init(m):
+
+    if isinstance(m, nn.Linear):
+        nn.init.xavier_normal_(m.weight)
+        nn.init.constant_(m.bias, 0)
+    
+    elif isinstance(m, nn.Conv1d):
+        nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+    
+    elif isinstance(m, nn.BatchNorm1d):
+        nn.init.constant_(m.weight, 1)
+        nn.init.constant_(m.bias, 0)
 
 class Conv1D(nn.Module):
 
@@ -30,20 +30,23 @@ class Conv1D(nn.Module):
         super().__init__()
 
         self.dropout = nn.Dropout(dropout)
-        self.relu = nn.ReLU()
+        # self.relu = nn.ReLU()
+        self.relu = nn.LeakyReLU()
         self.softmax = nn.Softmax(dim=2)
 
-        self.layer_in = nn.Conv1d(in_channels, 2*in_channels, kernel_size=1)
-        self.norm_in = nn.BatchNorm1d(2*in_channels)
-        self.layer1 = nn.Conv1d(2*in_channels, 4*in_channels, kernel_size=3, padding=1)
+        self.layer_in = nn.Conv1d(in_channels, 4*in_channels, kernel_size=1)
+        self.norm_in = nn.BatchNorm1d(4*in_channels)
+        self.layer1 = nn.Conv1d(4*in_channels, 4*in_channels, kernel_size=3, padding=1)
         self.norm1 = nn.BatchNorm1d(4*in_channels)
-        self.layer2 = nn.Conv1d(4*in_channels, 4*in_channels, kernel_size=5, padding=2)
+        self.layer2 = nn.Conv1d(4*in_channels, 4*in_channels, kernel_size=3, padding=1)
         self.norm2 = nn.BatchNorm1d(4*in_channels)
-        self.layer3 = nn.Conv1d(4*in_channels, 2*in_channels, kernel_size=3, padding=1)
-        self.norm3 = nn.BatchNorm1d(2*in_channels)
-        self.layer4 = nn.Conv1d(2*in_channels, in_channels, kernel_size=3, padding=1)
-        self.norm4 = nn.BatchNorm1d(in_channels)
-        self.fc = nn.Linear(in_channels, 2)
+        self.layer3 = nn.Conv1d(4*in_channels, 4*in_channels, kernel_size=3, padding=1)
+        self.norm3 = nn.BatchNorm1d(4*in_channels)
+        self.layer4 = nn.Conv1d(4*in_channels, 4*in_channels, kernel_size=3, padding=1)
+        self.norm4 = nn.BatchNorm1d(4*in_channels)
+        self.fc = nn.Linear(4*in_channels, 2)
+
+        self.apply(weight_init)
     
     def forward(self, x):
 
@@ -72,6 +75,7 @@ class Conv1D(nn.Module):
 
         return x
 
+
 class LitConv1D(pl.LightningModule):
 
     def __init__(self, fasttext, in_channels, dropout=0.1, lr=1e-4):
@@ -82,8 +86,20 @@ class LitConv1D(pl.LightningModule):
         self.model = Conv1D(in_channels, dropout)
         self.criterion = nn.CrossEntropyLoss(ignore_index=-1)
 
-    def forward(self):
-        pass
+    def forward(self, sentences, len_arrs):
+
+        outputs = self.model(sentences)
+        outputs = torch.argmax(outputs, dim=2)
+        outputs = outputs.cpu().numpy()
+        batch_result = []
+        for len_arr, output in zip(len_arrs, outputs):
+            out_one_hot = [output[i] for i in range(len(len_arr)) for _ in range(len_arr[i])]
+            out_seq = []
+            for i in range(len(out_one_hot)):
+                if out_one_hot[i] == 1:
+                    out_seq.append(i)
+            batch_result.append(out_seq)
+        return batch_result
 
     def training_step(self, batch, batch_idx):
 
@@ -130,6 +146,6 @@ class LitConv1D(pl.LightningModule):
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
-        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=20)
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=30)
         return {'optimizer': optimizer, 'lr_scheduler': scheduler, 'monitor': 'val_loss'}
 

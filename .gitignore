@@ -129,15 +129,12 @@ dmypy.json
 .pyre/
 
 # Trained Models
-cnn/results
-cnn/lightning_logs
+**/results
+**/lightning_logs
 
 # VScode
 .vscode
 
-# Temp
-.tmp
-
 # Fasttext
-cc.en.300.bin
-cc.en.300.bin.gz
+**/cc.en.300.bin
+**/cc.en.300.bin.gz
