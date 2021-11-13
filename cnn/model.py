@@ -44,6 +44,14 @@ class Conv1D(nn.Module):
         self.norm3 = nn.BatchNorm1d(4*in_channels)
         self.layer4 = nn.Conv1d(4*in_channels, 4*in_channels, kernel_size=3, padding=1)
         self.norm4 = nn.BatchNorm1d(4*in_channels)
+        # self.layer5 = nn.Conv1d(4*in_channels, 4*in_channels, kernel_size=3, padding=1)
+        # self.norm5 = nn.BatchNorm1d(4*in_channels)
+        # self.layer6 = nn.Conv1d(4*in_channels, 4*in_channels, kernel_size=3, padding=1)
+        # self.norm6 = nn.BatchNorm1d(4*in_channels)
+        # self.layer7 = nn.Conv1d(4*in_channels, 4*in_channels, kernel_size=3, padding=1)
+        # self.norm7 = nn.BatchNorm1d(4*in_channels)
+        # self.layer8 = nn.Conv1d(4*in_channels, 4*in_channels, kernel_size=3, padding=1)
+        # self.norm8 = nn.BatchNorm1d(4*in_channels)
         self.fc = nn.Linear(4*in_channels, 2)
 
         self.apply(weight_init)
@@ -69,6 +77,22 @@ class Conv1D(nn.Module):
         x = self.layer4(x)
         x = self.norm4(x)
         x = self.dropout(self.relu(x))
+
+        # x = self.layer5(x)
+        # x = self.norm5(x)
+        # x = self.dropout(self.relu(x))
+
+        # x = self.layer6(x)
+        # x = self.norm6(x)
+        # x = self.dropout(self.relu(x))
+
+        # x = self.layer7(x)
+        # x = self.norm7(x)
+        # x = self.dropout(self.relu(x))
+
+        # x = self.layer8(x)
+        # x = self.norm8(x)
+        # x = self.dropout(self.relu(x))
 
         x = einops.rearrange(x, 'B C L -> B L C')
         x = self.softmax(self.fc(x))
@@ -137,6 +161,8 @@ class LitConv1D(pl.LightningModule):
                 if out_one_hot[i] == 1:
                     out_seq.append(i)
             score += f1(out_seq, gt_seq)
+            with open('prediction.txt', 'a') as f:
+                f.write(f'{out_seq}\n')
         score /= arrs.shape[0]
         self.log("f1_score", score, on_step=False, on_epoch=True, sync_dist=True)
 
