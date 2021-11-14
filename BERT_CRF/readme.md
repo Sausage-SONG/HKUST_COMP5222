@@ -18,3 +18,6 @@ reporting score: 0.6783
 ## training time
 
 This model should be trained within 30mins with the help of GPU, within 8hours with CPU only.
+
+## trained model
+[Dropbox](https://www.dropbox.com/sh/p5gm8ulatmyvb06/AADRVqH2LXBC4msqnD7zQNbOa?dl=0)
