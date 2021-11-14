@@ -13,7 +13,7 @@ This directory contains the BERT+CRF method for the task.
 ## Results
 output_{1-5}.txt represent the prediction result of fold_{1-5}.csv, which is the arguments of eval_tsd.py to exam the F1 score.
 
-reporting score: 0.6783
+reporting F1-score: 0.6783
 
 ## training time
 
